@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>भारत WeatherSync — Indian Cities Live Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080d18;
+      --surface:   #0e1526;
+      --surface2:  #131c30;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.12);
+      --saffron:   #FF9933;
+      --white:     #f0f4ff;
+      --green:     #138808;
+      --green-l:   #4ade80;
+      --navy:      #000080;
+      --text:      #dde8ff;
+      --muted:     rgba(221,232,255,0.42);
+      --radius:    22px;
+      --font:      'Plus Jakarta Sans', sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      overflow-x: hidden;
+    }
+
+    /* ── Radial gradient bg ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 15% 10%, rgba(255,153,51,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 85% 90%, rgba(19,136,8,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0,0,128,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── Dot grid ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+    }
+
+    /* ── Page wrap ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: 1280px; margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* ════════════════════════ HEADER ════════════════════════ */
+    header {
+      margin-bottom: 44px;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 20px; flex-wrap: wrap;
+    }
+
+    .brand { display: flex; align-items: center; gap: 16px; }
+
+    .flag-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: linear-gradient(
+        180deg,
+        var(--saffron) 0%, var(--saffron) 33.3%,
+        #ffffff       33.3%, #ffffff      66.6%,
+        var(--green)  66.6%, var(--green) 100%
+      );
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 8px 32px rgba(255,153,51,0.25);
+      position: relative; overflow: hidden;
+    }
+    .flag-icon::after {
+      content: '⊙';
+      position: absolute; color: var(--navy);
+      font-size: 18px; font-weight: 900;
+    }
+
+    .brand-text { }
+    .brand-name {
+      font-size: 1.7rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1;
+      background: linear-gradient(100deg, var(--saffron) 0%, #ffcc77 40%, var(--green-l) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .brand-sub {
+      font-family: var(--mono); font-size: 0.68rem;
+      color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    .header-meta {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(19,136,8,0.12); border: 1px solid rgba(19,136,8,0.35);
+      border-radius: 100px; padding: 5px 14px;
+      font-family: var(--mono); font-size: 0.7rem;
+      color: var(--green-l); letter-spacing: 0.1em;
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green-l); box-shadow: 0 0 8px var(--green-l);
+      animation: blink 1.6s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.7)} }
+
+    .time-display {
+      font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+    }
+
+    /* ════════════════════════ CITY SELECTOR ════════════════════════ */
+    .selector-panel {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 18px;
+      padding: 22px 26px;
+      margin-bottom: 28px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+
+    .panel-label {
+      font-family: var(--mono); font-size: 0.68rem;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em;
+      white-space: nowrap; min-width: fit-content;
+    }
+
+    .inputs-row { display: flex; gap: 10px; flex: 1; flex-wrap: wrap; }
+
+    .inp-wrap { position: relative; flex: 1; min-width: 130px; }
+    .inp-prefix {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%); font-size: 15px; pointer-events: none;
+      line-height: 1;
+    }
+    .city-inp {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px 10px 36px;
+      color: var(--text); font-family: var(--font); font-size: 0.88rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .city-inp::placeholder { color: var(--muted); }
+    .city-inp:focus {
+      border-color: rgba(255,153,51,0.55);
+      box-shadow: 0 0 0 3px rgba(255,153,51,0.09);
+    }
+
+    .go-btn {
+      background: linear-gradient(135deg, var(--saffron), #ff6a00);
+      color: #fff; border: none; border-radius: 10px;
+      padding: 10px 24px;
+      font-family: var(--font); font-weight: 700; font-size: 0.88rem;
+      cursor: pointer; white-space: nowrap;
+      box-shadow: 0 4px 18px rgba(255,153,51,0.35);
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .go-btn:hover  { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,153,51,0.45); }
+    .go-btn:active { transform: translateY(0); }
+    .go-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* ════════════════════════ PROMISE STATUS BAR ════════════════════════ */
+    .promise-bar {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 22px;
+      margin-bottom: 28px; display: none;
+      align-items: center; gap: 14px; flex-wrap: wrap;
+      font-family: var(--mono); font-size: 0.7rem;
+    }
+    .pb-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+    .pb-slots  { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pb-slot {
+      padding: 3px 12px; border-radius: 6px;
+      border: 1px solid var(--border); color: var(--muted);
+      transition: all 0.35s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .pb-slot.pending  { border-color: #fbbf24; color: #fbbf24; background: rgba(251,191,36,0.07); }
+    .pb-slot.resolved { border-color: var(--green-l); color: var(--green-l); background: rgba(74,222,128,0.07); }
+    .pb-slot.rejected { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.07); }
+    .pb-elapsed { margin-left: auto; color: var(--muted); }
+
+    /* ════════════════════════ GRID ════════════════════════ */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 22px;
+    }
+
+    /* ── Skeleton ── */
+    .skeleton {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); height: 480px;
+      position: relative; overflow: hidden;
+    }
+    .skeleton::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%);
+      background-size: 250% 100%;
+      animation: shim 1.7s ease-in-out infinite;
+    }
+    @keyframes shim { 0%{background-position:-250% 0} 100%{background-position:250% 0} }
+
+    /* ── Error card ── */
+    .err-card {
+      background: rgba(248,113,113,0.05);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: var(--radius); padding: 48px 28px;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      height: 480px; justify-content: center; text-align: center;
+      animation: card-in 0.55s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    .err-ico  { font-size: 3.5rem; }
+    .err-head { font-size: 1.05rem; font-weight: 700; color: #f87171; }
+    .err-body { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── Weather Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      position: relative;
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s;
+      animation: card-in 0.6s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    .card:hover {
+      transform: translateY(-7px) scale(1.01);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.09);
+    }
+    @keyframes card-in {
+      from { opacity:0; transform: translateY(28px) scale(0.96); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+    .card:nth-child(1) { animation-delay:0.05s }
+    .card:nth-child(2) { animation-delay:0.15s }
+    .card:nth-child(3) { animation-delay:0.25s }
+
+    /* Top gradient band */
+    .card-band {
+      height: 4px;
+      background: linear-gradient(90deg, var(--c-accent, var(--saffron)), transparent 80%);
+    }
+
+    /* Card hero — emoji + temp side by side */
+    .card-hero {
+      padding: 22px 24px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: relative;
+    }
+    .hero-left { }
+    .card-city {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+    }
+    .card-state {
+      font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.12em; margin-top: 4px;
+    }
+    .card-coords {
+      font-family: var(--mono); font-size: 0.6rem; color: rgba(221,232,255,0.28);
+      margin-top: 3px;
+    }
+
+    .hero-right { text-align: right; }
+    .card-emoji {
+      font-size: 4.5rem; line-height: 1;
+      filter: drop-shadow(0 0 22px var(--c-accent, var(--saffron)));
+      animation: sway 5s ease-in-out infinite;
+      display: block;
+    }
+    @keyframes sway {
+      0%,100% { transform: rotate(-3deg) scale(1); }
+      50%      { transform: rotate(3deg) scale(1.06); }
+    }
+
+    /* Temp block */
+    .card-temp-block {
+      padding: 0 24px 18px;
+      display: flex; align-items: baseline; gap: 6px;
+    }
+    .temp-val {
+      font-size: 4rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1;
+      background: linear-gradient(145deg, #fff 30%, var(--c-accent, var(--saffron)));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .temp-unit { font-size: 1.4rem; color: var(--muted); font-weight: 600; }
+    .temp-sep  { flex: 1; }
+    .temp-cond {
+      font-size: 0.8rem; color: var(--muted); text-align: right;
+      max-width: 90px; line-height: 1.4; align-self: center;
+    }
+
+    /* ── Stats grid ── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--border);
+    }
+    .stat {
+      padding: 13px 10px; text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-ico { font-size: 1.1rem; margin-bottom: 4px; }
+    .stat-v   { font-size: 0.88rem; font-weight: 700; }
+    .stat-l   { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+
+    /* ── AQI Section ── */
+    .aqi-section {
+      margin: 0 16px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+    }
+    .aqi-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .aqi-title {
+      font-family: var(--mono); font-size: 0.65rem;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.13em;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .aqi-badge {
+      font-weight: 700; font-size: 0.9rem;
+      padding: 2px 10px; border-radius: 8px;
+      border: 1px solid var(--aqi-color, #fbbf24);
+      color: var(--aqi-color, #fbbf24);
+      background: rgba(0,0,0,0.25);
+    }
+    .aqi-label-text {
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--aqi-color, #fbbf24);
+    }
+
+    /* AQI bar */
+    .aqi-bar-bg {
+      height: 7px; border-radius: 100px;
+      background: linear-gradient(
+        90deg,
+        #4ade80 0%,      /* Good        0-50  */
+        #a3e635 16.7%,   /* Satisfactory*/
+        #fbbf24 33.3%,   /* Moderate    */
+        #fb923c 50%,     /* Poor        */
+        #f87171 66.7%,   /* Very Poor   */
+        #a78bfa 83.3%,   /* Severe      */
+        #7c3aed 100%     /* Hazardous   */
+      );
+      position: relative; margin-bottom: 8px;
+    }
+    .aqi-cursor {
+      position: absolute; top: 50%; transform: translate(-50%, -50%);
+      width: 13px; height: 13px; border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 0 2px var(--aqi-color, #fbbf24), 0 0 12px var(--aqi-color, #fbbf24);
+      transition: left 0.8s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    .aqi-pollutants {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      margin-top: 8px;
+    }
+    .poll {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 8px; text-align: center;
+    }
+    .poll-name { font-family: var(--mono); font-size: 0.6rem; color: var(--muted); text-transform: uppercase; }
+    .poll-val  { font-size: 0.82rem; font-weight: 700; margin-top: 2px; }
+
+    /* ── Timestamp ── */
+    .card-foot {
+      padding: 10px 20px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-updated {
+      font-family: var(--mono); font-size: 0.6rem; color: var(--muted);
+    }
+    .card-india-tag {
+      font-family: var(--mono); font-size: 0.6rem; color: rgba(255,153,51,0.5);
+      letter-spacing: 0.08em;
+    }
+
+    /* ════════════════════════ SPINNER ════════════════════════ */
+    .spin {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--saffron);
+      border-radius: 50%; animation: rotate 0.7s linear infinite;
+    }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+
+    /* ════════════════════════ FOOTER ════════════════════════ */
+    footer {
+      margin-top: 56px; text-align: center;
+      font-family: var(--mono); font-size: 0.65rem; color: rgba(221,232,255,0.18);
+      letter-spacing: 0.08em; line-height: 2;
+    }
+    footer a { color: rgba(255,153,51,0.45); text-decoration: none; }
+    footer a:hover { color: var(--saffron); }
+
+    /* ════════════════════════ RESPONSIVE ════════════════════════ */
+    @media (max-width: 640px) {
+      header { flex-direction: column; }
+      .header-meta { align-items: flex-start; }
+      .card-emoji { font-size: 3.5rem; }
+      .temp-val   { font-size: 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="brand">
+      <div class="flag-icon"></div>
+      <div class="brand-text">
+        <div class="brand-name">भारत WeatherSync</div>
+        <div class="brand-sub">India · Promise.all · Open-Meteo + AQI</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="live-pill">
+        <div class="live-dot"></div>
+        LIVE DATA
+      </div>
+      <div class="time-display" id="clockDisplay">—</div>
+    </div>
+  </header>
+
+  <!-- ── CITY SELECTOR ── -->
+  <div class="selector-panel">
+    <div class="panel-label">🇮🇳 Cities</div>
+    <div class="inputs-row">
+      <div class="inp-wrap">
+        <span class="inp-prefix">🏛️</span>
+        <input class="city-inp" id="c1" type="text" value="Delhi" placeholder="City 1"/>
+      </div>
+      <div class="inp-wrap">
+        <span class="inp-prefix">💰</span>
+        <input class="city-inp" id="c2" type="text" value="Mumbai" placeholder="City 2"/>
+      </div>
+      <div class="inp-wrap">
+        <span class="inp-prefix">🌸</span>
+        <input class="city-inp" id="c3" type="text" value="Bengaluru" placeholder="City 3"/>
+      </div>
+    </div>
+    <button class="go-btn" id="goBtn" onclick="fetchAll()">
+      <span id="btnIco">⚡</span>
+      <span id="btnTxt">Fetch All</span>
+    </button>
+  </div>
+
+  <!-- ── PROMISE.ALL STATUS BAR ── -->
+  <div class="promise-bar" id="promiseBar">
+    <span class="pb-label">Promise.allSettled</span>
+    <div class="pb-slots" id="pbSlots"></div>
+    <span class="pb-elapsed" id="pbElapsed"></span>
+  </div>
+
+  <!-- ── CARDS GRID ── -->
+  <div class="grid" id="grid"></div>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <div>Weather · <a href="https://open-meteo.com" target="_blank">Open-Meteo API</a> &nbsp;|&nbsp; AQI · <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank">Open-Meteo Air Quality API</a></div>
+    <div>Geocoding · <a href="https://geocoding-api.open-meteo.com" target="_blank">Open-Meteo Geocoding</a> &nbsp;|&nbsp; Concurrent fetching via Promise.allSettled</div>
+  </footer>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// WMO Weather code map
+// ─────────────────────────────────────────────────────────────────────────────
+const WMO = {
+  0:  { label:'Clear Sky',           emoji:'☀️',  color:'#FBBF24' },
+  1:  { label:'Mainly Clear',        emoji:'🌤️', color:'#FCD34D' },
+  2:  { label:'Partly Cloudy',       emoji:'⛅',  color:'#94A3B8' },
+  3:  { label:'Overcast',            emoji:'☁️',  color:'#64748B' },
+  45: { label:'Fog',                 emoji:'🌫️', color:'#94A3B8' },
+  48: { label:'Rime Fog',            emoji:'🌫️', color:'#94A3B8' },
+  51: { label:'Light Drizzle',       emoji:'🌦️', color:'#60A5FA' },
+  53: { label:'Drizzle',             emoji:'🌧️', color:'#3B82F6' },
+  55: { label:'Heavy Drizzle',       emoji:'🌧️', color:'#2563EB' },
+  61: { label:'Slight Rain',         emoji:'🌧️', color:'#60A5FA' },
+  63: { label:'Moderate Rain',       emoji:'🌧️', color:'#3B82F6' },
+  65: { label:'Heavy Rain',          emoji:'⛈️', color:'#1D4ED8' },
+  71: { label:'Slight Snow',         emoji:'🌨️', color:'#E0F2FE' },
+  73: { label:'Moderate Snow',       emoji:'❄️',  color:'#BAE6FD' },
+  75: { label:'Heavy Snow',          emoji:'❄️',  color:'#7DD3FC' },
+  77: { label:'Snow Grains',         emoji:'🌨️', color:'#BAE6FD' },
+  80: { label:'Slight Showers',      emoji:'🌦️', color:'#60A5FA' },
+  81: { label:'Moderate Showers',    emoji:'🌧️', color:'#3B82F6' },
+  82: { label:'Violent Showers',     emoji:'⛈️', color:'#2563EB' },
+  85: { label:'Slight Snow Showers', emoji:'🌨️', color:'#BAE6FD' },
+  86: { label:'Heavy Snow Showers',  emoji:'❄️',  color:'#7DD3FC' },
+  95: { label:'Thunderstorm',        emoji:'⛈️', color:'#7C3AED' },
+  96: { label:'Thunderstorm+Hail',   emoji:'🌩️', color:'#6D28D9' },
+  99: { label:'Heavy Thunderstorm',  emoji:'🌩️', color:'#4C1D95' },
+};
+function wmo(c) { return WMO[c] || { label:'Unknown', emoji:'🌐', color:'#FF9933' }; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AQI helpers  (European AQI index from Open-Meteo air quality API)
+// ─────────────────────────────────────────────────────────────────────────────
+const AQI_LEVELS = [
+  { max:20,  label:'Good',         color:'#4ade80', pct:5  },
+  { max:40,  label:'Fair',         color:'#a3e635', pct:15 },
+  { max:60,  label:'Moderate',     color:'#fbbf24', pct:30 },
+  { max:80,  label:'Poor',         color:'#fb923c', pct:50 },
+  { max:100, label:'Very Poor',    color:'#f87171', pct:68 },
+  { max:150, label:'Extremely Poor',color:'#a78bfa',pct:83 },
+  { max:Infinity, label:'Hazardous', color:'#7c3aed', pct:95 },
+];
+function aqiInfo(v) {
+  for (const l of AQI_LEVELS) if (v <= l.max) return l;
+  return AQI_LEVELS.at(-1);
+}
+function aqiPct(v) {
+  // Map AQI 0-150+ to 0-100% bar position
+  return Math.min(100, (v / 150) * 100);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API calls
+// ─────────────────────────────────────────────────────────────────────────────
+async function geocode(city) {
+  const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5&language=en&format=json`);
+  if (!r.ok) throw new Error(`Geocoding failed for "${city}"`);
+  const d = await r.json();
+  if (!d.results?.length) throw new Error(`City "${city}" not found`);
+  // Prefer India results
+  const india = d.results.find(x => x.country_code === 'IN') || d.results[0];
+  return {
+    name: india.name,
+    state: india.admin1 || india.country,
+    country: india.country,
+    country_code: india.country_code,
+    lat: india.latitude,
+    lon: india.longitude,
+    tz: india.timezone || 'Asia/Kolkata',
+  };
+}
+
+async function fetchWeatherAndAQI(city) {
+  const geo = await geocode(city);
+  const [wRes, aRes] = await Promise.all([
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,surface_pressure&wind_speed_unit=kmh&timezone=${encodeURIComponent(geo.tz)}`),
+    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${geo.lat}&longitude=${geo.lon}&current=european_aqi,pm10,pm2_5,nitrogen_dioxide,ozone&timezone=${encodeURIComponent(geo.tz)}`)
+  ]);
+  if (!wRes.ok) throw new Error(`Weather fetch failed for "${city}"`);
+  if (!aRes.ok) throw new Error(`AQI fetch failed for "${city}"`);
+  const [w, a] = await Promise.all([wRes.json(), aRes.json()]);
+  return { geo, weather: w.current, aqi: a.current };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Render helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function skeletons(n) {
+  document.getElementById('grid').innerHTML =
+    Array.from({length:n}).map(() => `<div class="skeleton"></div>`).join('');
+}
+
+function cardHTML(result, idx) {
+  if (result.status === 'rejected') {
+    return `<div class="err-card" style="animation-delay:${idx*0.1}s">
+      <div class="err-ico">⚠️</div>
+      <div class="err-head">Fetch Failed</div>
+      <div class="err-body">${esc(result.reason?.message || 'Unknown error')}</div>
+    </div>`;
+  }
+
+  const { geo, weather, aqi } = result.value;
+  const w   = wmo(weather.weather_code);
+  const temp = Math.round(weather.temperature_2m);
+  const feel = Math.round(weather.apparent_temperature);
+  const hum  = weather.relative_humidity_2m;
+  const wind = Math.round(weather.wind_speed_10m);
+  const pres = Math.round(weather.surface_pressure);
+
+  const aqiVal = Math.round(aqi?.european_aqi ?? 0);
+  const ai     = aqiInfo(aqiVal);
+  const barPct = aqiPct(aqiVal).toFixed(1);
+  const pm25   = aqi?.pm2_5   != null ? aqi.pm2_5.toFixed(1)   : '—';
+  const pm10   = aqi?.pm10    != null ? aqi.pm10.toFixed(1)    : '—';
+  const no2    = aqi?.nitrogen_dioxide != null ? aqi.nitrogen_dioxide.toFixed(1) : '—';
+  const o3     = aqi?.ozone   != null ? aqi.ozone.toFixed(1)   : '—';
+
+  const now = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const isIndia = geo.country_code === 'IN';
+
+  return `
+  <div class="card" style="--c-accent:${w.color}; animation-delay:${idx*0.1}s">
+    <div class="card-band"></div>
+
+    <div class="card-hero">
+      <div class="hero-left">
+        <div class="card-city">${esc(geo.name)}</div>
+        <div class="card-state">${esc(geo.state)}</div>
+        <div class="card-coords">${geo.lat.toFixed(2)}°N · ${geo.lon.toFixed(2)}°E</div>
+      </div>
+      <div class="hero-right">
+        <span class="card-emoji">${w.emoji}</span>
+      </div>
+    </div>
+
+    <div class="card-temp-block">
+      <div class="temp-val">${temp}</div>
+      <div class="temp-unit">°C</div>
+      <div class="temp-sep"></div>
+      <div class="temp-cond">${esc(w.label)}</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-ico">🌡️</div>
+        <div class="stat-v">${feel}°C</div>
+        <div class="stat-l">Feels Like</div>
+      </div>
+      <div class="stat">
+        <div class="stat-ico">💧</div>
+        <div class="stat-v">${hum}%</div>
+        <div class="stat-l">Humidity</div>
+      </div>
+      <div class="stat">
+        <div class="stat-ico">💨</div>
+        <div class="stat-v">${wind} km/h</div>
+        <div class="stat-l">Wind</div>
+      </div>
+    </div>
+
+    <!-- AQI Section -->
+    <div class="aqi-section" style="--aqi-color:${ai.color}">
+      <div class="aqi-header">
+        <div class="aqi-title">🫁 Air Quality Index</div>
+        <div class="aqi-label-text">${esc(ai.label)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div class="aqi-badge">${aqiVal}</div>
+        <div style="flex:1">
+          <div class="aqi-bar-bg">
+            <div class="aqi-cursor" style="left:${barPct}%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.55rem;color:var(--muted);margin-top:3px">
+            <span>0 Good</span><span>150+ Hazardous</span>
+          </div>
+        </div>
+      </div>
+      <div class="aqi-pollutants">
+        <div class="poll">
+          <div class="poll-name">PM₂.₅</div>
+          <div class="poll-val">${pm25}</div>
+        </div>
+        <div class="poll">
+          <div class="poll-name">PM₁₀</div>
+          <div class="poll-val">${pm10}</div>
+        </div>
+        <div class="poll">
+          <div class="poll-name">NO₂</div>
+          <div class="poll-val">${no2}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-foot">
+      <div class="card-updated">Updated ${now} IST</div>
+      <div class="card-india-tag">${isIndia ? '🇮🇳 INDIA' : esc(geo.country)}</div>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Promise bar helpers
+// ─────────────────────────────────────────────────────────────────────────────
+function initBar(cities) {
+  const bar = document.getElementById('promiseBar');
+  bar.style.display = 'flex';
+  document.getElementById('pbElapsed').textContent = '';
+  document.getElementById('pbSlots').innerHTML = cities.map((c,i) =>
+    `<span class="pb-slot pending" id="pbs${i}"><span class="spin" style="width:9px;height:9px;border-width:1.5px"></span> ${esc(c)}</span>`
+  ).join('');
+}
+function setSlot(i, s, city) {
+  const el = document.getElementById(`pbs${i}`);
+  if (!el) return;
+  el.className = `pb-slot ${s}`;
+  el.textContent = (s === 'resolved' ? '✓ ' : '✗ ') + city;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchAll() {
+  const btn = document.getElementById('goBtn');
+  const cities = ['c1','c2','c3'].map(id => document.getElementById(id).value.trim()).filter(Boolean);
+  if (!cities.length) return;
+
+  btn.disabled = true;
+  document.getElementById('btnIco').innerHTML = '<span class="spin"></span>';
+  document.getElementById('btnTxt').textContent = 'Fetching…';
+
+  skeletons(cities.length);
+  initBar(cities);
+
+  const t0 = performance.now();
+
+  const tracked = cities.map((city, i) =>
+    fetchWeatherAndAQI(city)
+      .then(v  => { setSlot(i, 'resolved', city); return v; })
+      .catch(e => { setSlot(i, 'rejected', city); throw e; })
+  );
+
+  // ── Promise.allSettled — all settle regardless of individual failures ──
+  const results = await Promise.allSettled(tracked);
+
+  const ms = ((performance.now() - t0) / 1000).toFixed(2);
+  document.getElementById('pbElapsed').textContent = `⚡ All settled in ${ms}s`;
+
+  document.getElementById('grid').innerHTML = results.map((r,i) => cardHTML(r,i)).join('');
+
+  btn.disabled = false;
+  document.getElementById('btnIco').textContent = '⚡';
+  document.getElementById('btnTxt').textContent = 'Fetch All';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live clock
+// ─────────────────────────────────────────────────────────────────────────────
+function tick() {
+  document.getElementById('clockDisplay').textContent =
+    new Date().toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata', weekday:'short',
+      hour:'2-digit', minute:'2-digit', second:'2-digit'
+    }) + ' IST';
+}
+tick(); setInterval(tick, 1000);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enter key + auto-load
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.city-inp').forEach(el =>
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') fetchAll(); })
+  );
+  fetchAll();
+});
+</script>
+</body>
+</html>
