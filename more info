@@ -13,3 +13,17 @@
 ⚡ Fast API Integration – Fetches live weather data using a weather API.
 
 🎨 Modern UI – Clean and interactive user interface with smooth styling....
+
+🛠️ Technologies Used
+
+HTML5 – Structure of the application
+
+CSS3 – Styling and responsive design
+
+JavaScript (ES6) – Application logic and API handling
+
+Weather API – Fetching real-time weather data
+
+VS Code – Development environment
+
+GitHub – Version control and project hosting
